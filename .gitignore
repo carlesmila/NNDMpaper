@@ -1,0 +1,9 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*experiments.R
+code/test_params.R
+cluster*
+wc*
+figures*

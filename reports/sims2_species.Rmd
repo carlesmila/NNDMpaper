@@ -1,0 +1,212 @@
+---
+title: "Results simulation 2: Virtual Species"
+author: "Carles Milà"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.align = 'center', message = FALSE,
+                      warning = FALSE, fig.width = 8, fig.height = 3)
+
+library("ggthemes")
+library("tidyverse")
+```
+
+This document contains the code to obtain the figures included in section 3.2, where results of simulation 2 are presented.
+
+```{r read data}
+res <- read_csv("results/sim2_species/results_iberia.csv")
+
+res <- mutate(res, 
+              dsample=gsub("wr", "Weak\nr", dsample),
+              dsample=gsub("sr", "Strong\nr", dsample),
+              dsample=gsub("ran", "Ran", dsample),
+              dsample=gsub("wclust", "Weak\nclustered", dsample),
+              dsample=gsub("sclust", "Strong\nclustered", dsample),
+              dsample = fct_inorder(as.factor(dsample)))
+```
+
+```{r absolute scores reviewer, eval=F}
+absscores <- dplyr::select(res, -outrange, -resrange) %>%
+  pivot_longer(-dsample, names_to = "statCV", values_to = "score") %>%
+  group_by(statCV) %>%
+  mutate(statistic = strsplit(statCV, "_")[[1]][1],
+         validation = gsub("RMSE_|MAE_|R2_", "", statCV),
+         validation = ifelse(validation == "surf", "true", validation),
+         validation = as.factor(validation),
+         validation = fct_relevel(validation, c("true", "LOO", 
+                                                "bLOO_out", "NDM_out", 
+                                                "bLOO_res", "NDM_res")),
+         statistic = as.factor(statistic),
+         statistic = fct_relevel(statistic, c("RMSE", "MAE", "R2"))) %>%
+  ungroup() %>%
+  dplyr::select(-statCV)
+
+labsub <- c(expression(True~score), expression(LOO~CV), 
+            expression(bLOO[outcome]~CV), expression(NNDM~LOO[outcome]~CV),
+            expression(bLOO[residual]~CV), expression(NNDM~LOO[residual]~CV))
+
+ggplot(absscores, aes(y=score, x=dsample, colour=validation)) +
+  geom_boxplot() +
+  facet_wrap(~ statistic, nrow = 3, scales = "free_y") +
+  scale_colour_colorblind(labels = labsub) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(size=9), legend.text.align = 0,
+        legend.text = element_text(size=10), legend.position = "bottom") +
+  xlab("Sampling distribution") + ylab("Score") +
+  labs(colour="Validation method")
+ggsave("figures/sim2_reviewer.png", dpi=300, width=7, height=7)
+```
+
+
+```{r compute ratios}
+res <- mutate(res,
+              RMSE_LOO=RMSE_LOO-RMSE_surf,
+              RMSE_bLOO_out=RMSE_bLOO_out-RMSE_surf,
+              RMSE_bLOO_res=RMSE_bLOO_res-RMSE_surf,
+              RMSE_NDM_out=RMSE_NDM_out-RMSE_surf,
+              RMSE_NDM_res=RMSE_NDM_res-RMSE_surf)
+
+res <- mutate(res,
+              MAE_LOO=MAE_LOO-MAE_surf,
+              MAE_bLOO_out=MAE_bLOO_out-MAE_surf,
+              MAE_bLOO_res=MAE_bLOO_res-MAE_surf,
+              MAE_NDM_out=MAE_NDM_out-MAE_surf,
+              MAE_NDM_res=MAE_NDM_res-MAE_surf)
+
+res <- mutate(res,
+              R2_LOO=R2_LOO-R2_surf,
+              R2_bLOO_out=R2_bLOO_out-R2_surf,
+              R2_bLOO_res=R2_bLOO_res-R2_surf,
+              R2_NDM_out=R2_NDM_out-R2_surf,
+              R2_NDM_res=R2_NDM_res-R2_surf)
+```
+
+# RMSE
+
+```{r rmse}
+resplot <- dplyr::select(res,
+                         dsample, RMSE_LOO, 
+                         RMSE_bLOO_out, RMSE_bLOO_res, 
+                         RMSE_NDM_out, RMSE_NDM_res) %>%
+  pivot_longer(2:ncol(.), names_to="CV", values_to="RMSE") %>%
+  mutate(CV = gsub("RMSE_", "", CV),
+         CV = as.factor(CV),
+         CV = fct_relevel(CV, c("LOO", "bLOO_out", "NDM_out", 
+                                "bLOO_res", "NDM_res")))
+
+labsub <- c(expression(LOO), 
+            expression(bLOO[outcome]), expression(NNDM~LOO[outcome]),
+            expression(bLOO[residual]), expression(NNDM~LOO[residual]))
+
+p1 <- ggplot(resplot, aes(y=RMSE, x=dsample, colour=CV)) +
+  geom_hline(aes(yintercept=0), lwd=1, alpha=0.2) +
+  geom_boxplot() +
+  scale_colour_colorblind(labels = labsub) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(size=9), legend.text.align = 0,
+        legend.text = element_text(size=10)) +
+  xlab("Sampling distribution") + ylab("CV - true RMSE") +
+  labs(colour="CV method")
+p1
+# ggsave("figures/sim2_RMSE.png", p1, dpi=300, width=8, height=3)
+```
+
+
+```{r rmse stats, eval=FALSE}
+# LOO CV
+round(mean(filter(res, dsample=="Strong\nregular")$RMSE_LOO), 2)
+round(sd(filter(res, dsample=="Strong\nregular")$RMSE_LOO), 2)
+round(mean(filter(res, dsample=="Random")$RMSE_LOO), 2)
+round(sd(filter(res, dsample=="Random")$RMSE_LOO), 2)
+round(mean(filter(res, dsample=="Strong\nclustered")$RMSE_LOO), 2)
+round(sd(filter(res, dsample=="Strong\nclustered")$RMSE_LOO), 2)
+
+# bLOO CV
+round(mean(filter(res, dsample=="Weak\nclustered")$RMSE_bLOO_out), 2)
+round(sd(filter(res, dsample=="Weak\nclustered")$RMSE_bLOO_out), 2)
+round(mean(filter(res, dsample=="Weak\nclustered")$RMSE_bLOO_res), 2)
+round(sd(filter(res, dsample=="Weak\nclustered")$RMSE_bLOO_res), 2)
+
+# Radii
+round(median(res$outrange)/1000)
+round(median(res$resrange)/1000)
+
+# nndm LOO CV
+round(mean(filter(res, dsample=="Random")$RMSE_NDM_out), 2)
+round(sd(filter(res, dsample=="Random")$RMSE_NDM_out), 2)
+round(mean(filter(res, dsample=="Random")$RMSE_NDM_res), 2)
+round(sd(filter(res, dsample=="Random")$RMSE_NDM_res), 2)
+
+round(mean(filter(res, dsample=="Weak\nclustered")$RMSE_NDM_out), 2)
+round(sd(filter(res, dsample=="Weak\nclustered")$RMSE_NDM_out), 2)
+round(mean(filter(res, dsample=="Weak\nclustered")$RMSE_NDM_res), 2)
+round(sd(filter(res, dsample=="Weak\nclustered")$RMSE_NDM_res), 2)
+
+round(mean(filter(res, dsample=="Strong\nclustered")$RMSE_NDM_out), 2)
+round(sd(filter(res, dsample=="Strong\nclustered")$RMSE_NDM_out), 2)
+round(mean(filter(res, dsample=="Strong\nclustered")$RMSE_NDM_res), 2)
+round(sd(filter(res, dsample=="Strong\nclustered")$RMSE_NDM_res), 2)
+```
+
+# MAE
+
+```{r MAE}
+resplot <- dplyr::select(res,
+                         dsample, MAE_LOO, 
+                         MAE_bLOO_out, MAE_bLOO_res, 
+                         MAE_NDM_out, MAE_NDM_res) %>%
+  pivot_longer(2:ncol(.), names_to="CV", values_to="MAE") %>%
+  mutate(CV = gsub("MAE_", "", CV),
+         CV = as.factor(CV),
+         CV = fct_relevel(CV, c("LOO", "bLOO_out", "NDM_out", 
+                                "bLOO_res", "NDM_res")))
+
+labsub <- c(expression(LOO), 
+            expression(bLOO[outcome]), expression(NNDM~LOO[outcome]),
+            expression(bLOO[residual]), expression(NNDM~LOO[residual]))
+
+p1 <- ggplot(resplot, aes(y=MAE, x=dsample, colour=CV)) +
+  geom_hline(aes(yintercept=0), lwd=1, alpha=0.2) +
+  geom_boxplot() +
+  scale_colour_colorblind(labels = labsub) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(size=9), legend.text.align = 0,
+        legend.text = element_text(size=10)) +
+  xlab("Sampling distribution") + ylab("CV - true MAE") +
+  labs(colour="CV method")
+p1
+# ggsave("figures/sim2_MAE.png", p1, dpi=300, width=8, height=3)
+```
+
+
+# R2
+
+```{r R2}
+resplot <- dplyr::select(res,
+                         dsample, R2_LOO, 
+                         R2_bLOO_out, R2_bLOO_res, 
+                         R2_NDM_out, R2_NDM_res) %>%
+  pivot_longer(2:ncol(.), names_to="CV", values_to="R2") %>%
+  mutate(CV = gsub("R2_", "", CV),
+         CV = as.factor(CV),
+         CV = fct_relevel(CV, c("LOO", "bLOO_out", "NDM_out", 
+                                "bLOO_res", "NDM_res")))
+
+labsub <- c(expression(LOO), 
+            expression(bLOO[outcome]), expression(NNDM~LOO[outcome]),
+            expression(bLOO[residual]), expression(NNDM~LOO[residual]))
+
+p1 <- ggplot(resplot, aes(y=R2, x=dsample, colour=CV)) +
+  geom_hline(aes(yintercept=0), lwd=1, alpha=0.2) +
+  geom_boxplot() +
+  scale_colour_colorblind(labels = labsub) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(size=9), legend.text.align = 0,
+        legend.text = element_text(size=10)) +
+  xlab("Sampling distribution") + ylab(expression(CV~-~true~R^2)) +
+  labs(colour="CV method")
+p1
+# ggsave("figures/sim2_R2.png", p1, dpi=300, width=8, height=3)
+```

@@ -1,0 +1,492 @@
+---
+title: "Results simulation 1: Random Fields"
+author: "Carles Milà"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.align = 'center', message = FALSE,
+                      warning = FALSE, fig.width = 8, fig.height = 8)
+
+library("ggthemes")
+library("tidyverse")
+```
+
+This document contains the code to obtain the figures included in section 3.1, where results of simulation 1 are presented, as well as results figures from simulation 1 included in the appendix.
+
+```{r read results}
+res1 <- read_csv("results/sim1_fields/sim1.csv")
+res10 <- read_csv("results/sim1_fields/sim10.csv")
+res20 <- read_csv("results/sim1_fields/sim20.csv")
+res30 <- read_csv("results/sim1_fields/sim30.csv")
+res40 <- read_csv("results/sim1_fields/sim40.csv")
+
+res <- bind_rows(res1, res10, res20, res30, res40)
+
+res <- mutate(res, 
+              dsample=gsub("wr", "Weak\nr", dsample),
+              dsample=gsub("sr", "Strong\nr", dsample),
+              dsample=gsub("ran", "Ran", dsample),
+              dsample=gsub("wclust", "Weak\nclustered", dsample),
+              dsample=gsub("sclust", "Strong\nclustered", dsample),
+              dsample = fct_inorder(as.factor(dsample)))
+```
+
+```{r compute ratios}
+res <- mutate(res,
+              RMSE_LOO_inter=RMSE_LOO-RMSE_inter,
+              RMSE_LOO_extra=RMSE_LOO-RMSE_extra,
+              RMSE_bLOO_inter=RMSE_bLOO-RMSE_inter,
+              RMSE_bLOO_extra=RMSE_bLOO-RMSE_extra,
+              RMSE_NDMinter_inter=RMSE_NDMinter-RMSE_inter,
+              RMSE_NDMextra_extra=RMSE_NDMextra-RMSE_extra)
+
+res <- mutate(res,
+              MAE_LOO_inter=MAE_LOO-MAE_inter,
+              MAE_LOO_extra=MAE_LOO-MAE_extra,
+              MAE_bLOO_inter=MAE_bLOO-MAE_inter,
+              MAE_bLOO_extra=MAE_bLOO-MAE_extra,
+              MAE_NDMinter_inter=MAE_NDMinter-MAE_inter,
+              MAE_NDMextra_extra=MAE_NDMextra-MAE_extra)
+
+res <- mutate(res,
+              R2_LOO_inter=R2_LOO-R2_inter,
+              R2_LOO_extra=R2_LOO-R2_extra,
+              R2_bLOO_inter=R2_bLOO-R2_inter,
+              R2_bLOO_extra=R2_bLOO-R2_extra,
+              R2_NDMinter_inter=R2_NDMinter-R2_inter,
+              R2_NDMextra_extra=R2_NDMextra-R2_extra)
+```
+
+# Profile format
+
+## RMSE
+
+### N=100
+
+```{r lines n100 RMSE, fig.height = 4}
+resplot <- dplyr::select(res, range, nsample, dsample, contains("RMSE")) %>%
+  pivot_longer(4:9, names_to = "method", values_to = "RMSE") %>%
+  rename(N=nsample) %>%
+  dplyr::filter(N==100) %>%
+  mutate(method = gsub("RMSE_", "", method)) %>%
+  group_by(range, N, dsample, method) %>%
+  summarise(mean = mean(RMSE),
+            Q1=quantile(RMSE, 0.25),
+            Q3=quantile(RMSE, 0.75), .groups="keep") %>%
+  mutate(statistic = "RMSE")
+
+# Merge results and prepare for plotting
+resplot <- resplot %>%
+  mutate(statistic = fct_inorder(statistic),
+         method = as.factor(method),
+         method = fct_relevel(method, c("inter", "extra", "LOO", "bLOO", 
+                                        "NDMinter", "NDMextra")))
+labsub <- c(expression(true[interp]), expression(true[extrap]),
+            expression(LOO~CV), expression(bLOO~CV),
+            expression(NNDM~LOO~CV[interp]), expression(NNDM~LOO~CV[extrap]))
+
+ggplot(resplot) +
+  geom_line(aes(x=as.numeric(dsample), y=mean, 
+                colour=method, group=method)) +
+  geom_point(aes(x=as.numeric(dsample), y=mean, colour=method)) +
+  geom_ribbon(aes(x=as.numeric(dsample), ymin=Q1, ymax=Q3, 
+                  fill=method), alpha=0.2, show.legend = F) +
+  scale_colour_colorblind(labels=labsub) +
+  scale_fill_colorblind(labels=labsub) +
+  scale_x_continuous(breaks=1:5,labels=levels(resplot$dsample)) +
+  facet_grid(.~range, labeller = "label_both", scales = "free_y") +
+  theme_bw() +
+  theme(legend.position="bottom", 
+        axis.text.x=element_text(size=8, angle=90, hjust=1, vjust=0.5),
+        legend.text.align=0, legend.text = element_text(size=11)) +
+  ylab(expression(Mean~RMSE~"("*Q[1]*", "*Q[3]*")")) +
+  xlab("Sampling distribution") +
+  labs(colour="Validation method")
+# ggsave("figures/sim1_lines100_RMSE.png", width=8, height=4, dpi=300)
+```
+
+### N=200
+
+```{r lines n200 RMSE, fig.height = 4}
+resplot <- dplyr::select(res, range, nsample, dsample, contains("RMSE")) %>%
+  pivot_longer(4:9, names_to = "method", values_to = "RMSE") %>%
+  rename(N=nsample) %>%
+  dplyr::filter(N==200) %>%
+  mutate(method = gsub("RMSE_", "", method)) %>%
+  group_by(range, N, dsample, method) %>%
+  summarise(mean = mean(RMSE),
+            Q1=quantile(RMSE, 0.25),
+            Q3=quantile(RMSE, 0.75), .groups="keep") %>%
+  mutate(statistic = "RMSE")
+
+# Merge results and prepare for plotting
+resplot <- resplot %>%
+  mutate(statistic = fct_inorder(statistic),
+         method = as.factor(method),
+         method = fct_relevel(method, c("inter", "extra", "LOO", "bLOO", 
+                                        "NDMinter", "NDMextra")))
+labsub <- c(expression(true[interp]), expression(true[extrap]),
+            expression(LOO~CV), expression(bLOO~CV),
+            expression(NNDM~LOO~CV[interp]), expression(NNDM~LOO~CV[extrap]))
+
+ggplot(resplot) +
+  geom_line(aes(x=as.numeric(dsample), y=mean, 
+                colour=method, group=method)) +
+  geom_point(aes(x=as.numeric(dsample), y=mean, colour=method)) +
+  geom_ribbon(aes(x=as.numeric(dsample), ymin=Q1, ymax=Q3, 
+                  fill=method), alpha=0.2, show.legend = F) +
+  scale_colour_colorblind(labels=labsub) +
+  scale_fill_colorblind(labels=labsub) +
+  scale_x_continuous(breaks=1:5,labels=levels(resplot$dsample)) +
+  facet_grid(.~range, labeller = "label_both", scales = "free_y") +
+  theme_bw() +
+  theme(legend.position="bottom", 
+        axis.text.x=element_text(size=8, angle=90, hjust=1, vjust=0.5),
+        legend.text.align=0, legend.text = element_text(size=11)) +
+  ylab(expression(Mean~RMSE~"("*Q[1]*", "*Q[3]*")")) +
+  xlab("Sampling distribution") +
+  labs(colour="Validation method")
+# ggsave("figures/sim1_lines200_RMSE.png", width=8, height=4, dpi=300)
+```
+
+### N=300
+
+```{r lines n300 RMSE, fig.height = 4}
+resplot <- dplyr::select(res, range, nsample, dsample, contains("RMSE")) %>%
+  pivot_longer(4:9, names_to = "method", values_to = "RMSE") %>%
+  rename(N=nsample) %>%
+  dplyr::filter(N==300) %>%
+  mutate(method = gsub("RMSE_", "", method)) %>%
+  group_by(range, N, dsample, method) %>%
+  summarise(mean = mean(RMSE),
+            Q1=quantile(RMSE, 0.25),
+            Q3=quantile(RMSE, 0.75), .groups="keep") %>%
+  mutate(statistic = "RMSE")
+
+# Merge results and prepare for plotting
+resplot <- resplot %>%
+  mutate(statistic = fct_inorder(statistic),
+         method = as.factor(method),
+         method = fct_relevel(method, c("inter", "extra", "LOO", "bLOO", 
+                                        "NDMinter", "NDMextra")))
+labsub <- c(expression(true[interp]), expression(true[extrap]),
+            expression(LOO~CV), expression(bLOO~CV),
+            expression(NNDM~LOO~CV[interp]), expression(NNDM~LOO~CV[extrap]))
+
+ggplot(resplot) +
+  geom_line(aes(x=as.numeric(dsample), y=mean, 
+                colour=method, group=method)) +
+  geom_point(aes(x=as.numeric(dsample), y=mean, colour=method)) +
+  geom_ribbon(aes(x=as.numeric(dsample), ymin=Q1, ymax=Q3, 
+                  fill=method), alpha=0.2, show.legend = F) +
+  scale_colour_colorblind(labels=labsub) +
+  scale_fill_colorblind(labels=labsub) +
+  scale_x_continuous(breaks=1:5,labels=levels(resplot$dsample)) +
+  facet_grid(.~range, labeller = "label_both", scales = "free_y") +
+  theme_bw() +
+  theme(legend.position="bottom", 
+        axis.text.x=element_text(size=8, angle=90, hjust=1, vjust=0.5),
+        legend.text.align=0, legend.text = element_text(size=11)) +
+  ylab(expression(Mean~RMSE~"("*Q[1]*", "*Q[3]*")")) +
+  xlab("Sampling distribution") +
+  labs(colour="Validation method")
+# ggsave("figures/sim1_lines300_RMSE.png", width=8, height=4, dpi=300)
+```
+
+## MAE
+
+### N=200
+
+```{r lines n200 MAE, fig.height = 4}
+resplot <- dplyr::select(res, range, nsample, dsample, contains("MAE")) %>%
+  pivot_longer(4:9, names_to = "method", values_to = "MAE") %>%
+  rename(N=nsample) %>%
+  dplyr::filter(N==200) %>%
+  mutate(method = gsub("MAE_", "", method)) %>%
+  group_by(range, N, dsample, method) %>%
+  summarise(mean = mean(MAE),
+            Q1=quantile(MAE, 0.25),
+            Q3=quantile(MAE, 0.75), .groups="keep") %>%
+  mutate(statistic = "MAE")
+
+# Merge results and prepare for plotting
+resplot <- resplot %>%
+  mutate(statistic = fct_inorder(statistic),
+         method = as.factor(method),
+         method = fct_relevel(method, c("inter", "extra", "LOO", "bLOO", 
+                                        "NDMinter", "NDMextra")))
+labsub <- c(expression(true[interp]), expression(true[extrap]),
+            expression(LOO~CV), expression(bLOO~CV),
+            expression(NNDM~LOO~CV[interp]), expression(NNDM~LOO~CV[extrap]))
+
+ggplot(resplot) +
+  geom_line(aes(x=as.numeric(dsample), y=mean, 
+                colour=method, group=method)) +
+  geom_point(aes(x=as.numeric(dsample), y=mean, colour=method)) +
+  geom_ribbon(aes(x=as.numeric(dsample), ymin=Q1, ymax=Q3, 
+                  fill=method), alpha=0.2, show.legend = F) +
+  scale_colour_colorblind(labels=labsub) +
+  scale_fill_colorblind(labels=labsub) +
+  scale_x_continuous(breaks=1:5,labels=levels(resplot$dsample)) +
+  facet_grid(.~range, labeller = "label_both", scales = "free_y") +
+  theme_bw() +
+  theme(legend.position="bottom", 
+        axis.text.x=element_text(size=8, angle=90, hjust=1, vjust=0.5),
+        legend.text.align=0, legend.text = element_text(size=11)) +
+  ylab(expression(Mean~MAE~"("*Q[1]*", "*Q[3]*")")) +
+  xlab("Sampling distribution") +
+  labs(colour="Validation method")
+# ggsave("figures/sim1_lines200_MAE.png", width=8, height=4, dpi=300)
+```
+
+
+## R2
+
+### N=200
+
+```{r lines n200 R2, fig.height = 4}
+resplot <- dplyr::select(res, range, nsample, dsample, contains("R2")) %>%
+  pivot_longer(4:9, names_to = "method", values_to = "R2") %>%
+  rename(N=nsample) %>%
+  dplyr::filter(N==200) %>%
+  mutate(method = gsub("R2_", "", method)) %>%
+  group_by(range, N, dsample, method) %>%
+  summarise(mean = mean(R2),
+            Q1=quantile(R2, 0.25),
+            Q3=quantile(R2, 0.75), .groups="keep") %>%
+  mutate(statistic = "R2")
+
+# Merge results and prepare for plotting
+resplot <- resplot %>%
+  mutate(statistic = fct_inorder(statistic),
+         method = as.factor(method),
+         method = fct_relevel(method, c("inter", "extra", "LOO", "bLOO", 
+                                        "NDMinter", "NDMextra")))
+labsub <- c(expression(true[interp]), expression(true[extrap]),
+            expression(LOO~CV), expression(bLOO~CV),
+            expression(NNDM~LOO~CV[interp]), expression(NNDM~LOO~CV[extrap]))
+
+ggplot(resplot) +
+  geom_line(aes(x=as.numeric(dsample), y=mean, 
+                colour=method, group=method)) +
+  geom_point(aes(x=as.numeric(dsample), y=mean, colour=method)) +
+  geom_ribbon(aes(x=as.numeric(dsample), ymin=Q1, ymax=Q3, 
+                  fill=method), alpha=0.2, show.legend = F) +
+  scale_colour_colorblind(labels=labsub) +
+  scale_fill_colorblind(labels=labsub) +
+  scale_x_continuous(breaks=1:5,labels=levels(resplot$dsample)) +
+  facet_grid(.~range, labeller = "label_both", scales = "free_y") +
+  theme_bw() +
+  theme(legend.position="bottom", 
+        axis.text.x=element_text(size=8, angle=90, hjust=1, vjust=0.5),
+        legend.text.align=0, legend.text = element_text(size=11)) +
+  ylab(expression(Mean~R^2~"("*Q[1]*", "*Q[3]*")")) +
+  xlab("Sampling distribution") +
+  labs(colour="Validation method")
+# ggsave("figures/sim1_lines200_R2.png", width=8, height=4, dpi=300)
+```
+
+
+
+# Boxplot format
+
+## RMSE
+
+### N=100
+
+```{r boxplot RMSE nsample100}
+resplot <- dplyr::select(res,
+                         range, dsample, nsample,
+                         RMSE_LOO_inter, RMSE_LOO_extra, 
+                         RMSE_bLOO_inter, RMSE_bLOO_extra,
+                         RMSE_NDMinter_inter, RMSE_NDMextra_extra) %>%
+  dplyr::filter(nsample==100) %>%
+  pivot_longer(4:ncol(.), names_to="metric", values_to="RMSE") %>%
+  group_by(metric, dsample) %>%
+  mutate(CV = as.factor(unlist(strsplit(metric, "_"))[[2]]),
+         area = unlist(strsplit(metric, "_"))[[3]],
+         area = ifelse(area=="inter", "Interpolation", "Extrapolation"),
+         area = as.factor(area),
+         area=fct_relevel(area, "Interpolation"),
+         CV=fct_relevel(CV, c("LOO", "bLOO",
+                              "NDMinter", "NDMextra")))
+
+labsub <- c(expression(LOO), expression(bLOO), 
+            expression(NNDM~LOO[interp], NNDM~LOO[extrap]))
+
+ggplot(resplot, aes(y=RMSE, x=dsample, colour=CV)) +
+  geom_hline(aes(yintercept=0), lwd=1, alpha=0.2) +
+  geom_boxplot() +
+  scale_colour_colorblind(labels = labsub) +
+  facet_grid(range~area, labeller="label_both") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(size=8), legend.text.align = 0) +
+  xlab("Sampling distribution") + ylab("CV - true RMSE") +
+  labs(colour="CV method")
+# ggsave("figures/sim1_RMSE100_boxplots.png", width=7, height=6, dpi=300)
+``` 
+
+### N=200
+
+```{r boxplot RMSE nsample200}
+resplot <- dplyr::select(res,
+                         range, dsample, nsample,
+                         RMSE_LOO_inter, RMSE_LOO_extra, 
+                         RMSE_bLOO_inter, RMSE_bLOO_extra,
+                         RMSE_NDMinter_inter, RMSE_NDMextra_extra) %>%
+  dplyr::filter(nsample==200) %>%
+  pivot_longer(4:ncol(.), names_to="metric", values_to="RMSE") %>%
+  group_by(metric, dsample) %>%
+  mutate(CV = as.factor(unlist(strsplit(metric, "_"))[[2]]),
+         area = unlist(strsplit(metric, "_"))[[3]],
+         area = ifelse(area=="inter", "Interpolation", "Extrapolation"),
+         area = as.factor(area),
+         area=fct_relevel(area, "Interpolation"),
+         CV=fct_relevel(CV, c("LOO", "bLOO",
+                              "NDMinter", "NDMextra")))
+
+ggplot(resplot, aes(y=RMSE, x=dsample, colour=CV)) +
+  geom_hline(aes(yintercept=0), lwd=1, alpha=0.2) +
+  geom_boxplot() +
+  scale_colour_colorblind(labels = labsub) +
+  facet_grid(range~area, labeller="label_both") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(size=8), legend.text.align = 0) +
+  xlab("Sampling distribution") + ylab("CV - true RMSE") +
+  labs(colour="CV method")
+# ggsave("figures/sim1_RMSE200_boxplots.png", width=7, height=6, dpi=300)
+``` 
+
+```{r stats RMSE nsample200, eval=FALSE}
+# LOO CV - Interpolation
+res_n200_r30 <- filter(res, nsample==200, range==30)
+round(mean(filter(res_n200_r30, dsample=="Strong\nregular")$RMSE_LOO_inter), 2)
+round(sd(filter(res_n200_r30, dsample=="Strong\nregular")$RMSE_LOO_inter), 2)
+round(mean(filter(res_n200_r30, dsample=="Random")$RMSE_LOO_inter), 2)
+round(sd(filter(res_n200_r30, dsample=="Random")$RMSE_LOO_inter), 2)
+round(mean(filter(res_n200_r30, dsample=="Strong\nclustered")$RMSE_LOO_inter), 2)
+round(sd(filter(res_n200_r30, dsample=="Strong\nclustered")$RMSE_LOO_inter), 2)
+
+# bLOO CV - Interpolation
+round(mean(filter(res_n200_r30, dsample=="Random")$RMSE_bLOO_inter), 2)
+round(sd(filter(res_n200_r30, dsample=="Random")$RMSE_bLOO_inter), 2)
+
+# NNDMCV - Interpolation
+round(mean(filter(res_n200_r30, dsample=="Strong\nclustered")$RMSE_NDMinter_inter), 2)
+round(sd(filter(res_n200_r30, dsample=="Strong\nclustered")$RMSE_NDMinter_inter), 2)
+
+# CV - Extrapolation
+round(mean(filter(res_n200_r30, dsample=="Weak\nclustered")$RMSE_LOO_extra), 2)
+round(sd(filter(res_n200_r30, dsample=="Weak\nclustered")$RMSE_LOO_inter), 2)
+round(mean(filter(res_n200_r30, dsample=="Weak\nclustered")$RMSE_bLOO_extra), 2)
+round(sd(filter(res_n200_r30, dsample=="Weak\nclustered")$RMSE_bLOO_extra), 2)
+round(mean(filter(res_n200_r30, dsample=="Weak\nclustered")$RMSE_NDMextra_extra), 2)
+round(sd(filter(res_n200_r30, dsample=="Weak\nclustered")$RMSE_NDMextra_extra), 2)
+```
+
+### N=300
+
+```{r boxplot RMSE nsample300}
+resplot <- dplyr::select(res,
+                         range, dsample, nsample,
+                         RMSE_LOO_inter, RMSE_LOO_extra, 
+                         RMSE_bLOO_inter, RMSE_bLOO_extra,
+                         RMSE_NDMinter_inter, RMSE_NDMextra_extra) %>%
+  dplyr::filter(nsample==300) %>%
+  pivot_longer(4:ncol(.), names_to="metric", values_to="RMSE") %>%
+  group_by(metric, dsample) %>%
+  mutate(CV = as.factor(unlist(strsplit(metric, "_"))[[2]]),
+         area = unlist(strsplit(metric, "_"))[[3]],
+         area = ifelse(area=="inter", "Interpolation", "Extrapolation"),
+         area = as.factor(area),
+         area=fct_relevel(area, "Interpolation"),
+         CV=fct_relevel(CV, c("LOO", "bLOO",
+                              "NDMinter", "NDMextra")))
+
+ggplot(resplot, aes(y=RMSE, x=dsample, colour=CV)) +
+  geom_hline(aes(yintercept=0), lwd=1, alpha=0.2) +
+  geom_boxplot() +
+  scale_colour_colorblind(labels = labsub) +
+  facet_grid(range~area, labeller="label_both") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(size=8), legend.text.align = 0) +
+  xlab("Sampling distribution") + ylab("CV - true RMSE") +
+  labs(colour="CV method")
+# ggsave("figures/sim1_RMSE300_boxplots.png", width=7, height=6, dpi=300)
+``` 
+
+## MAE
+
+### N=200
+
+```{r boxplot MAE nsample100}
+resplot <- dplyr::select(res,
+                         range, dsample, nsample,
+                         MAE_LOO_inter, MAE_LOO_extra, 
+                         MAE_bLOO_inter, MAE_bLOO_extra,
+                         MAE_NDMinter_inter, MAE_NDMextra_extra) %>%
+  dplyr::filter(nsample==200) %>%
+  pivot_longer(4:ncol(.), names_to="metric", values_to="MAE") %>%
+  group_by(metric, dsample) %>%
+  mutate(CV = as.factor(unlist(strsplit(metric, "_"))[[2]]),
+         area = unlist(strsplit(metric, "_"))[[3]],
+         area = ifelse(area=="inter", "Interpolation", "Extrapolation"),
+         area = as.factor(area),
+         area=fct_relevel(area, "Interpolation"),
+         CV=fct_relevel(CV, c("LOO", "bLOO",
+                              "NDMinter", "NDMextra")))
+
+labsub <- c(expression(LOO), expression(bLOO), 
+            expression(NNDM~LOO[interp], NNDM~LOO[extrap]))
+
+ggplot(resplot, aes(y=MAE, x=dsample, colour=CV)) +
+  geom_hline(aes(yintercept=0), lwd=1, alpha=0.2) +
+  geom_boxplot() +
+  scale_colour_colorblind(labels = labsub) +
+  facet_grid(range~area, labeller="label_both") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(size=8), legend.text.align = 0) +
+  xlab("Sampling distribution") + ylab("CV - true MAE") +
+  labs(colour="CV method")
+# ggsave("figures/sim1_MAE200_boxplots.png", width=7, height=6, dpi=300)
+```
+
+## R2
+
+### N=200
+
+```{r boxplot R2 nsample100}
+resplot <- dplyr::select(res,
+                         range, dsample, nsample,
+                         R2_LOO_inter, R2_LOO_extra, 
+                         R2_bLOO_inter, R2_bLOO_extra,
+                         R2_NDMinter_inter, R2_NDMextra_extra) %>%
+  dplyr::filter(nsample==200) %>%
+  pivot_longer(4:ncol(.), names_to="metric", values_to="R2") %>%
+  group_by(metric, dsample) %>%
+  mutate(CV = as.factor(unlist(strsplit(metric, "_"))[[2]]),
+         area = unlist(strsplit(metric, "_"))[[3]],
+         area = ifelse(area=="inter", "Interpolation", "Extrapolation"),
+         area = as.factor(area),
+         area=fct_relevel(area, "Interpolation"),
+         CV=fct_relevel(CV, c("LOO", "bLOO",
+                              "NDMinter", "NDMextra")))
+
+labsub <- c(expression(LOO), expression(bLOO), 
+            expression(NNDM~LOO[interp], NNDM~LOO[extrap]))
+
+ggplot(resplot, aes(y=R2, x=dsample, colour=CV)) +
+  geom_hline(aes(yintercept=0), lwd=1, alpha=0.2) +
+  geom_boxplot() +
+  scale_colour_colorblind(labels = labsub) +
+  facet_grid(range~area, labeller="label_both") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(size=8), legend.text.align = 0) +
+  xlab("Sampling distribution") +
+  ylab(expression(CV~-~true~R^2)) +
+  labs(colour="CV method")
+# ggsave("figures/sim1_R2200_boxplots.png", width=7, height=6, dpi=300)
+```
+
